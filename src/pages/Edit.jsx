@@ -1,26 +1,56 @@
-import React, { Fragment } from "react";
+import React, { Fragment, useState } from "react";
 import Header from "../common/Header";
 import Container from "../common/Container";
-import { useParams } from "react-router-dom";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
+import { useParams, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import { editTodo } from "../redux/slices/todosSlice";
-export default function Edit() {
-  const todos = useSelector((state) => state.할일들); // slice의 상태를 가져옴
-  console.log(todos);
-  const dispatch = useDispatch();
+import { useQuery, useQueryClient, useMutation } from "react-query";
+import axios from "axios";
 
+export default function Edit() {
+  const dispatch = useDispatch();
+  const queryClient = new useQueryClient();
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const findId = todos.find((item) => item.id === id);
+  const { data, isLoading, isError, error } = useQuery("posts", async () => {
+    const response = await axios.get("http://localhost:4000/posts");
+    return response.data;
+  });
+
+  const findId = data.find((item) => item.id === id);
 
   const [editedTodo, setEditedTodo] = useState({
     title: findId ? findId.title : "",
     content: findId ? findId.content : "",
   });
-
+  const mutation = useMutation(
+    async () => {
+      // 수정할 데이터 생성
+      const updatedTodo = {
+        ...findId,
+        title: editedTodo.title,
+        content: editedTodo.content,
+      };
+      // 백엔드 API 호출
+      await axios.put(`http://localhost:4000/posts/${id}`, updatedTodo);
+      return updatedTodo;
+    },
+    {
+      onSuccess: (data) => {
+        // 수정 완료 후, Redux store 업데이트 및 캐시된 데이터 업데이트
+        dispatch(editTodo(data));
+        queryClient.invalidateQueries("posts");
+        navigate("/");
+      },
+    }
+  );
+  if (isLoading) {
+    return <div>데이터 가져오는 중임</div>;
+  }
+  if (isError) {
+    return <div>{error.message}</div>;
+  }
   if (!findId) {
     // id에 해당하는 할일이 없는 경우에 대한 처리
     return (
@@ -33,15 +63,13 @@ export default function Edit() {
     );
   }
 
-  const submitHandler = (e) => {
+  const submitHandler = async (e) => {
     e.preventDefault();
-    const updatedTodos = {
-      ...findId,
-      title: editedTodo.title,
-      content: editedTodo.content,
-    };
-    dispatch(editTodo(updatedTodos)); // editTodo 액션 디스패치하여 Redux store의 상태 업데이트
-    navigate("/");
+    try {
+      await mutation.mutateAsync();
+    } catch (error) {
+      // 에러 처리
+    }
   };
 
   return (

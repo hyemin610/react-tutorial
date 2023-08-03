@@ -4,17 +4,19 @@ import App from "./App";
 import { BrowserRouter } from "react-router-dom";
 import store from "./redux/config/configStore";
 import { Provider } from "react-redux";
-import { auth } from "./firebase";
+import { QueryClient, QueryClientProvider } from "react-query";
 
-console.log("auth", auth);
+const queryClient = new QueryClient();
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
-  <React.StrictMode>
-    <Provider store={store}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </Provider>
-  </React.StrictMode>
+  <QueryClientProvider client={queryClient}>
+    <React.StrictMode>
+      <Provider store={store}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </Provider>
+    </React.StrictMode>
+  </QueryClientProvider>
 );

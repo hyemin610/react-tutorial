@@ -4,33 +4,45 @@ import Container from "../common/Container";
 import { nanoid } from "nanoid";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
-import { addTodo } from "../redux/slices/todosSlice"; // addRemoveSlice에서 removeTodo 액션을 가져옴
-export default function Create() {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+import { useSelector } from "react-redux";
+import { useMutation, useQueryClient } from "react-query";
+import axios from "axios";
 
-  const userEmail = useSelector((state) => state.loginSignup.userEmail);
-  //새로 추가한 거 담을 상자
+export default function Create() {
+  const navigate = useNavigate();
+  const queryClient = new useQueryClient();
+
+  const userEmail = useSelector((state) => state.user.email);
+
   const [createTodo, setCreateTodo] = useState({
     title: "",
     content: "",
     author: userEmail,
   });
-  const submitHandler = (e) => {
+  const newTodo = {
+    id: nanoid(),
+    author: userEmail,
+    ...createTodo,
+  };
+
+  const mutation = useMutation(
+    async () => {
+      await axios.post("http://localhost:4000/posts", {
+        ...newTodo,
+      });
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("posts");
+      },
+    }
+  );
+
+  const submitHandler = async (e) => {
     e.preventDefault();
-    //새로운 할일 객체 생성
-    const newTodo = {
-      id: nanoid(),
-      author: userEmail,
-      ...createTodo,
-    };
-    //기존 할일에 새로운 할일 추가
-    dispatch(addTodo(newTodo)); // addTodo 액션 디스패치하여 Redux store의 상태 업데이트
 
     navigate("/");
   };
-
   return (
     <>
       <Header />
@@ -86,6 +98,9 @@ export default function Create() {
             />
           </div>
           <button
+            onClick={() => {
+              mutation.mutate();
+            }}
             type="submit"
             style={{
               width: "100%",

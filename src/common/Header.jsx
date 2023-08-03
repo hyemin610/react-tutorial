@@ -2,21 +2,20 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaHome } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
-import { logout } from "../redux/slices/loginSlice";
+import { unsetUser } from "../redux/slices/userSlice";
 import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
 export default function Header() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
-  const isLoggedIn = useSelector((state) => state.loginSignup.isLoggedIn);
-  const userEmail = useSelector((state) => state.loginSignup.userEmail);
+  const userEmail = useSelector((state) => state.user.email);
 
   const LogOut = async (e) => {
     e.preventDefault();
-    await signOut(auth);
-    dispatch(logout());
+    await signOut(auth); // email을 null로 만들어줌
+    dispatch(unsetUser());
   };
+
   return (
     <header
       style={{
@@ -35,7 +34,7 @@ export default function Header() {
       >
         <FaHome onClick={() => navigate("/")} />
       </h1>
-      {isLoggedIn ? (
+      {userEmail !== null ? (
         <div style={{ display: "flex" }}>
           <div>{userEmail}님</div>
           <button

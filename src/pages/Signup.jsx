@@ -1,48 +1,45 @@
 import React from "react";
 import Header from "../common/Header";
 import Container from "../common/Container";
-import { useState, useEffect } from "react";
 import { auth } from "../firebase";
-import { login } from "../redux/slices/loginSlice";
-import {
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-} from "firebase/auth";
+import { setUser } from "../redux/slices/userSlice";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-export default function Signup() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [checkPassword, setCheckPassword] = useState("");
+export default function Signup({ inputs, setInputs }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  useEffect(() => {
-    onAuthStateChanged(auth, (user) => {
-      console.log("user", user);
+  const changeHandler = (e) => {
+    // input에 name 속성 꼭 넣어주세요. (모르겠으면 검색 혹은 질문하기)
+    const { name, value } = e.target;
+    setInputs((prev) => {
+      return {
+        ...prev,
+        [name]: value,
+      };
     });
-  }, []);
-
+  };
   const signUp = async (event) => {
     event.preventDefault();
 
     // 회원가입 유효성 검사
-    // 이메일 필드가 비어있는지 확인
-    if (!email) {
-      alert("이메일을 입력해주세요.");
-      return;
-    }
     // 비밀번호가 6자리 이상인지 확인
-    if (password.length < 6) {
+    if (inputs.password.length < 6) {
       alert("비밀번호는 6자리 이상이어야 합니다.");
       return;
     }
-    // 비밀번호, 비밀번호 확인 필드가 비어있는지 확인
-    if (!password || !checkPassword) {
+    // 이메일 창이 비어있는지 확인
+    if (!inputs.email) {
+      alert("이메일을 입력해주세요.");
+      return;
+    }
+    // 비밀번호, 비밀번호 창 둘다 채워져 있는지 확인
+    if (!inputs.password || !inputs.PasswordConfirm) {
       alert("비밀번호와 비밀번호 확인을 모두 입력해주세요.");
       return;
     }
     // 비밀번호와 비밀번호 확인이 일치하는지 확인
-    if (password !== checkPassword) {
+    if (inputs.password !== inputs.PasswordConfirm) {
       alert("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
       return;
     }
@@ -50,28 +47,38 @@ export default function Signup() {
     try {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
-        email,
-        password
+        inputs.email,
+        inputs.password
       );
       console.log("user", userCredential.user);
-      // 회원가입 완료시 이메일을 리듀서에 저장
-      dispatch(login(email));
+      // 회원가입 완료 시 이메일을 리듀서에 저장
+      dispatch(setUser(inputs.email));
       alert("회원가입되었습니다.");
       navigate("/");
     } catch (error) {
-      const errorCode = error.code;
-      const errorMessage = error.message;
-      console.log("error with signUp", errorCode, errorMessage);
-
-      //회원가입 유효성검사
-      if (errorCode === "auth/invalid-email") {
-        alert("유효하지 않은 이메일 형식입니다.");
-      } else if (errorCode === "auth/email-already-in-use") {
-        alert("이미 사용 중인 이메일입니다.");
-      } else {
-        alert(errorMessage);
+      // 참고 문서: https://firebase.google.com/docs/reference/js/v8/firebase.auth.Auth#error-codes_3
+      if (error.code === "auth/email-already-in-use") {
+        return alert("이미 존재하는 이메일입니다.");
       }
+
+      if (error.code === "auth/invalid-email") {
+        return alert("이메일 형식이 적절하지 않습니다.");
+      }
+
+      if (error.code === "auth/weak-password") {
+        return alert("비밀번호는 최소 6자리 이상이어야 합니다.");
+      }
+
+      if (error.code === "auth/operation-not-allowed") {
+        return alert("휴면 계정입니다. 관리자에게 문의하세요.");
+      }
+
+      return alert("알 수 없는 에러입니다. 나중에 다시 시도해보세요.");
     }
+    setInputs({
+      email: "",
+      password: "",
+    });
   };
   return (
     <>
@@ -95,9 +102,9 @@ export default function Signup() {
               <input
                 placeholder="이메일"
                 type="email"
-                value={email}
+                value={inputs.email}
                 name="email"
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={changeHandler}
                 required
                 style={{
                   width: "100%",
@@ -119,9 +126,9 @@ export default function Signup() {
               <input
                 placeholder="비밀번호"
                 type="password"
-                value={password}
+                value={inputs.password}
                 name="password"
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={changeHandler}
                 required
                 style={{
                   width: "100%",
@@ -142,9 +149,9 @@ export default function Signup() {
             >
               <input
                 placeholder="비밀번호 확인"
-                value={checkPassword}
-                onChange={(e) => setCheckPassword(e.target.value)}
-                type="password"
+                value={inputs.PasswordConfirm}
+                name="PasswordConfirm"
+                onChange={changeHandler}
                 style={{
                   width: "100%",
                   height: "40px",
