@@ -3,19 +3,41 @@ import Header from "../common/Header";
 import Container from "../common/Container";
 import { useSelector, useDispatch } from "react-redux";
 import { removeTodo } from "../redux/slices/todosSlice";
+import { useQuery, useQueryClient } from "react-query";
+import axios from "axios";
 
 export default function Main() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const todos = useSelector((state) => state.할일들); // slice의 상태를 가져옴
+  const queryClient = new useQueryClient();
+  const userEmail = useSelector((state) => state.user.email);
+  const { data, isLoading, isError, error } = useQuery("posts", async () => {
+    const response = await axios.get("http://localhost:4000/posts");
+    return response.data;
+  });
+  // {
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries("posts");
+  //   },
+  if (isLoading) {
+    return <div>데이터 가져오는 중임</div>;
+  }
+  if (isError) {
+    return <div>{error.message}</div>;
+  }
 
-  //로그인 되어있는 지 아닌 지의 상태를 알기위해 리덕스에서 로그인 상태를 가져옴
-  const isLoggedIn = useSelector((state) => state.loginSignup.isLoggedIn);
-  const userEmail = useSelector((state) => state.loginSignup.userEmail);
-
-  const handleRemoveTodo = (id) => {
+  const handleRemoveTodo = async (id) => {
     if (window.confirm("삭제하시겠습니까?")) {
-      dispatch(removeTodo(id)); // removeTodo 액션 디스패치하여 Redux store의 상태 업데이트
+      try {
+        // 서버에서 해당 할일 데이터 삭제
+        await axios.delete(`http://localhost:4000/posts/${id}`);
+        // Redux store에서 해당 할일 제거
+        dispatch(removeTodo(id));
+        // 캐시된 데이터를 업데이트하여 화면에 변경 사항 반영
+        queryClient.invalidateQueries("posts");
+      } catch (error) {
+        // 에러 처리
+      }
     }
   };
   return (
@@ -31,7 +53,7 @@ export default function Main() {
         >
           <button
             onClick={() => {
-              if (!isLoggedIn) {
+              if (!userEmail) {
                 alert("로그인 후 이용해주세요.");
                 navigate("/login");
               } else {
@@ -50,7 +72,7 @@ export default function Main() {
             추가
           </button>
         </div>
-        {todos.map((post) => {
+        {data.map((post) => {
           return (
             <div
               key={post.id}

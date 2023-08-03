@@ -1,28 +1,9 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { nanoid } from "nanoid";
+import todosData from "../../db.json";
 
 const todos = createSlice({
   name: "posts",
-  initialState: [
-    {
-      id: nanoid(),
-      title: "제목1",
-      content: "졸지않기",
-      author: "작성자1",
-    },
-    {
-      id: nanoid(),
-      title: "제목2",
-      content: "과제하기",
-      author: "작성자2",
-    },
-    {
-      id: nanoid(),
-      title: "제목3",
-      content: "이해하기",
-      author: "작성자3",
-    },
-  ],
+  initialState: todosData.posts,
   reducers: {
     addTodo: (state, action) => {
       // 새로운 할일을 추가하는 리듀서

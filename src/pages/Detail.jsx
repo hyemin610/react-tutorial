@@ -4,25 +4,50 @@ import Container from "../common/Container";
 import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
+import { useQuery, useQueryClient } from "react-query";
 import { removeTodo } from "../redux/slices/todosSlice"; // addRemoveSlice에서 removeTodo 액션을 가져옴
+import axios from "axios";
 export default function Detail() {
-  const todos = useSelector((state) => state.할일들);
   //로그인한 이메일주소를 가져오기 위해 리덕스 상태를 가져온다.
-  const userEmail = useSelector((state) => state.loginSignup.userEmail);
+  const userEmail = useSelector((state) => state.user.email);
 
   const dispatch = useDispatch();
-
+  const queryClient = new useQueryClient();
   const navigate = useNavigate();
   const { id } = useParams();
 
-  const handleRemoveTodo = (id) => {
+  const { data, isLoading, isError, error } = useQuery("posts", async () => {
+    const response = await axios.get("http://localhost:4000/posts");
+    return response.data;
+  });
+  // {
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries("posts");
+  //   },
+  if (isLoading) {
+    return <div>데이터 가져오는 중임</div>;
+  }
+  if (isError) {
+    return <div>{error.message}</div>;
+  }
+
+  const handleRemoveTodo = async (id) => {
     if (window.confirm("삭제하시겠습니까?")) {
-      dispatch(removeTodo(id)); // removeTodo 액션 디스패치하여 Redux store의 상태 업데이트
-      navigate("/"); //삭제후 디테일 페이지를 나가고 메인페이지로 이동
+      try {
+        // 서버에서 해당 할일 데이터 삭제
+        await axios.delete(`http://localhost:4000/posts/${id}`);
+        // Redux store에서 해당 할일 제거
+        dispatch(removeTodo(id));
+        // 캐시된 데이터를 업데이트하여 화면에 변경 사항 반영
+        queryClient.invalidateQueries("posts");
+        navigate("/");
+      } catch (error) {
+        // 에러 처리
+      }
     }
   };
 
-  const findId = todos.find((item) => item.id === id);
+  const findId = data.find((item) => item.id === id);
 
   if (!findId) {
     // id에 해당하는 할일이 없는 경우에 대한 처리
@@ -71,10 +96,6 @@ export default function Detail() {
           >
             <button
               onClick={() => {
-                // if (findId.author !== userEmail) {
-                //   alert("수정 권한이 없습니다.");
-                //   return; //return을 써서 페이지가 전환되는 것을 막음.
-                // }
                 navigate(`/edit/${findId.id}`);
               }}
               style={{
@@ -109,9 +130,7 @@ export default function Detail() {
               삭제
             </button>
           </div>
-        ) : (
-          ""
-        )}
+        ) : null}
       </Container>
     </>
   );
